@@ -1,4 +1,236 @@
-# React AI Chat Component
+# React AI Chat Component with DeepSeek Integration
+
+一个现代化的 React AI 聊天组件，集成了 DeepSeek AI 模型，通过 Cloudflare Workers 提供 GraphQL API 服务。
+
+## ✨ 特性
+
+- 🤖 **DeepSeek AI 集成**: 使用 DeepSeek 的强大 AI 模型
+- ⚡ **Cloudflare Workers**: 高性能的边缘计算 GraphQL API
+- 🎨 **多种聊天样式**: 标准、紧凑、自定义三种聊天界面
+- 📱 **响应式设计**: 完美适配桌面和移动设备
+- 🔄 **实时对话**: 流畅的聊天体验
+- 💾 **会话存储**: 基于 Cloudflare KV 的聊天历史记录
+- 🎯 **TypeScript**: 完整的类型安全
+- 🎨 **Tailwind CSS**: 现代化的样式系统
+
+## 🏗️ 技术栈
+
+### 前端
+- React 18
+- TypeScript
+- Tailwind CSS
+- Apollo GraphQL Client
+- Vite
+
+### 后端
+- Cloudflare Workers
+- GraphQL
+- DeepSeek API
+- Cloudflare KV Storage
+
+## 🚀 快速开始
+
+### 1. 克隆项目
+
+```bash
+git clone <your-repo-url>
+cd react-ai
+```
+
+### 2. 安装依赖
+
+```bash
+npm install
+```
+
+### 3. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件，配置您的 GraphQL 端点。
+
+### 4. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+## 📦 部署指南
+
+详细的部署步骤请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)，包括：
+
+- Cloudflare Workers 配置
+- DeepSeek API 集成
+- Cloudflare Pages 部署
+- 环境变量设置
+
+## 🔧 配置选项
+
+### 环境变量
+
+| 变量名 | 描述 | 默认值 |
+|--------|------|--------|
+| `VITE_GRAPHQL_ENDPOINT` | GraphQL API 端点 | - |
+| `VITE_ENABLE_GRAPHQL` | 是否启用 GraphQL | `false` |
+| `VITE_NODE_ENV` | 环境类型 | `development` |
+
+### 聊天组件配置
+
+```tsx
+import { ChatContainer } from '@/components/ChatContainer';
+
+<ChatContainer
+  variant="standard" // "standard" | "compact" | "custom"
+  enableGraphQL={true}
+  placeholder="输入您的消息..."
+/>
+```
+
+## 📁 项目结构
+
+```
+react-ai/
+├── src/
+│   ├── components/          # React 组件
+│   │   ├── ChatContainer.tsx
+│   │   ├── MessageList.tsx
+│   │   └── MessageInput.tsx
+│   ├── hooks/              # 自定义 Hooks
+│   │   ├── useChat.ts
+│   │   └── useChatGraphQL.ts
+│   ├── lib/                # 工具库
+│   │   ├── apollo-client.ts
+│   │   └── graphql-queries.ts
+│   └── pages/              # 页面组件
+│       └── Demo.tsx
+├── worker/                 # Cloudflare Worker
+│   ├── index.js           # Worker 主文件
+│   ├── wrangler.toml      # Worker 配置
+│   └── README.md          # Worker 文档
+└── DEPLOYMENT.md          # 部署指南
+```
+
+## 🎯 使用示例
+
+### 基础聊天组件
+
+```tsx
+import { useState } from 'react';
+import { ChatContainer } from '@/components/ChatContainer';
+
+function App() {
+  return (
+    <div className="h-screen">
+      <ChatContainer 
+        variant="standard"
+        enableGraphQL={true}
+      />
+    </div>
+  );
+}
+```
+
+### 自定义样式
+
+```tsx
+<ChatContainer
+  variant="custom"
+  className="max-w-4xl mx-auto"
+  messageClassName="bg-blue-50"
+  inputClassName="border-blue-300"
+/>
+```
+
+## 🔌 GraphQL API
+
+### 查询示例
+
+```graphql
+# 创建聊天会话
+mutation {
+  createChatSession {
+    id
+    createdAt
+  }
+}
+
+# 发送消息
+mutation SendMessage($input: SendMessageInput!) {
+  sendMessage(input: $input) {
+    message {
+      content
+      role
+    }
+    session {
+      id
+      messages {
+        content
+        role
+        timestamp
+      }
+    }
+  }
+}
+```
+
+## 🛠️ 开发
+
+### 本地开发
+
+```bash
+# 启动前端开发服务器
+npm run dev
+
+# 启动 Worker 本地开发
+cd worker
+npm run dev
+```
+
+### 构建
+
+```bash
+# 构建前端
+npm run build
+
+# 部署 Worker
+cd worker
+npm run deploy
+```
+
+## 🧪 测试
+
+```bash
+# 运行测试
+npm test
+
+# 类型检查
+npm run type-check
+
+# 代码检查
+npm run lint
+```
+
+## 📄 许可证
+
+MIT License
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📞 支持
+
+如果您遇到问题，请：
+
+1. 查看 [DEPLOYMENT.md](./DEPLOYMENT.md) 部署指南
+2. 检查 [Issues](../../issues) 中的已知问题
+3. 创建新的 Issue 描述您的问题
+
+---
+
+**享受与 AI 的对话吧！** 🎉
 
 基于 React + TypeScript + TailwindCSS 的现代化 AI 聊天框组件，支持 Markdown 渲染、GraphQL 集成和响应式设计。
 
