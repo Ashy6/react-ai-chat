@@ -94,20 +94,20 @@ const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       await CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
       return session;
     },
     sendMessage: async (parent, { input }, { CHAT_SESSIONS, DEEPSEEK_API_KEY }) => {
       const { sessionId, content, role } = input;
-      
+
       // 获取现有会话
       let session = await CHAT_SESSIONS.get(sessionId);
       if (!session) {
         throw new Error('Chat session not found');
       }
       session = JSON.parse(session);
-      
+
       // 创建用户消息
       const userMessage = {
         id: generateId(),
@@ -115,25 +115,25 @@ const resolvers = {
         role,
         timestamp: new Date().toISOString(),
       };
-      
+
       session.messages.push(userMessage);
-      
+
       // 如果是用户消息，调用 DeepSeek API 获取回复
       if (role === 'USER') {
         try {
           const aiResponse = await callDeepSeekAPI(session.messages, DEEPSEEK_API_KEY);
-          
+
           const assistantMessage = {
             id: generateId(),
             content: aiResponse,
             role: 'ASSISTANT',
             timestamp: new Date().toISOString(),
           };
-          
+
           session.messages.push(assistantMessage);
         } catch (error) {
           console.error('DeepSeek API error:', error);
-          
+
           // 如果 API 调用失败，返回错误消息
           const errorMessage = {
             id: generateId(),
@@ -141,15 +141,15 @@ const resolvers = {
             role: 'ASSISTANT',
             timestamp: new Date().toISOString(),
           };
-          
+
           session.messages.push(errorMessage);
         }
       }
-      
+
       // 更新会话
       session.updatedAt = new Date().toISOString();
       await CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
-      
+
       return {
         message: session.messages[session.messages.length - 1],
         session,
@@ -162,27 +162,27 @@ const resolvers = {
 async function executeGraphQL(query, variables, context) {
   // 这是一个简化的 GraphQL 执行器
   // 在生产环境中，您可能想要使用完整的 GraphQL 库
-  
+
   if (query.includes('hello')) {
     return { data: { hello: resolvers.Query.hello() } };
   }
-  
+
   if (query.includes('createChatSession')) {
     const result = await resolvers.Mutation.createChatSession(null, {}, context);
     return { data: { createChatSession: result } };
   }
-  
+
   if (query.includes('getChatSession')) {
     const sessionId = variables.sessionId;
     const result = await resolvers.Query.getChatSession(null, { sessionId }, context);
     return { data: { getChatSession: result } };
   }
-  
+
   if (query.includes('sendMessage')) {
     const result = await resolvers.Mutation.sendMessage(null, { input: variables.input }, context);
     return { data: { sendMessage: result } };
   }
-  
+
   return { errors: [{ message: 'Unknown query' }] };
 }
 
@@ -203,14 +203,14 @@ export default {
     if (request.method === 'POST') {
       try {
         const { query, variables } = await request.json();
-        
+
         const context = {
           CHAT_SESSIONS: env.CHAT_SESSIONS,
           DEEPSEEK_API_KEY: env.DEEPSEEK_API_KEY,
         };
-        
+
         const result = await executeGraphQL(query, variables, context);
-        
+
         return new Response(JSON.stringify(result), {
           headers: {
             'Content-Type': 'application/json',
@@ -219,8 +219,8 @@ export default {
         });
       } catch (error) {
         return new Response(
-          JSON.stringify({ 
-            errors: [{ message: error.message }] 
+          JSON.stringify({
+            errors: [{ message: error.message }]
           }),
           {
             status: 500,
@@ -236,7 +236,7 @@ export default {
     // GET 请求返回 GraphQL Playground 或简单信息
     if (request.method === 'GET') {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           message: 'DeepSeek GraphQL API is running!',
           endpoint: '/graphql'
         }),
@@ -249,7 +249,7 @@ export default {
       );
     }
 
-    return new Response('Method not allowed', { 
+    return new Response('Method not allowed', {
       status: 405,
       headers: corsHeaders,
     });
