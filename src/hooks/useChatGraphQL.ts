@@ -228,28 +228,45 @@ export function useChatGraphQL(options: {
         role: 'USER' as const
       };
 
-      console.log('Sending GraphQL message:', input);
+      console.log('🚀 Sending GraphQL message:', input);
 
       const result = await sendMessageMutation({
         variables: { input }
       });
 
-      console.log('GraphQL response:', result);
+      console.log('📨 GraphQL response:', result);
+      console.log('📨 Response data:', result.data);
+      console.log('📨 SendMessage data:', result.data?.sendMessage);
+      console.log('📨 Message content:', result.data?.sendMessage?.message?.content);
 
       if (result.errors && result.errors.length > 0) {
+        console.error('❌ GraphQL errors:', result.errors);
         throw new Error(result.errors[0].message);
+      }
+
+      if (!result.data?.sendMessage?.message?.content) {
+        console.error('❌ No message content in response');
+        throw new Error('未收到有效的回复内容');
+      }
+
+      const aiResponse = result.data.sendMessage.message.content;
+      console.log('✅ AI Response:', aiResponse);
+
+      // 检查是否是错误消息
+      if (aiResponse === '抱歉，我现在无法回复。请稍后再试。') {
+        console.error('❌ Received error message from AI');
+        throw new Error('AI 服务暂时不可用');
       }
 
       // 刷新会话数据
       await refetchSession();
 
-      return result.data?.sendMessage?.message?.content || '收到回复';
+      return aiResponse;
     } catch (error) {
-      console.error('GraphQL send message error:', error);
-      const errorMessage = handleError(error);
-      throw new Error(errorMessage);
+      console.error('❌ GraphQL send message error:', error);
+      throw error; // 直接抛出原始错误，不再包装
     }
-  }, [graphqlSessionId, sendMessageMutation, refetchSession, handleError]);
+  }, [graphqlSessionId, sendMessageMutation, refetchSession]);
 
   // 发送消息
   const sendMessage = useCallback(async (content: string) => {
@@ -267,30 +284,31 @@ export function useChatGraphQL(options: {
 
     try {
       if (useGraphQL) {
-        // 使用 GraphQL - 立即显示用户消息
-        // 注意：在 GraphQL 模式下，我们需要手动管理本地消息状态
-        // 因为 GraphQL 的消息更新是异步的
+        // 使用 GraphQL - 简化状态管理
+        console.log('📝 Adding user message to local state');
         
-        // 先添加用户消息到本地状态（临时显示）
-        const tempMessages = [...messages, userMessage];
-        setLocalMessages(tempMessages);
+        // 添加用户消息
+        const messagesWithUser = [...messages, userMessage];
+        setLocalMessages(messagesWithUser);
         
         // 创建加载中的 AI 消息
         const loadingAIMessage: Message = {
           id: generateId(),
-          content: '',
+          content: '正在思考中...',
           sender: 'ai',
           timestamp: Date.now(),
           isLoading: true
         };
         
-        const messagesWithLoading = [...tempMessages, loadingAIMessage];
+        const messagesWithLoading = [...messagesWithUser, loadingAIMessage];
         setLocalMessages(messagesWithLoading);
         
+        console.log('🤖 Calling GraphQL API...');
         // 发送 GraphQL 请求
         const aiResponse = await sendMessageGraphQL(content);
+        console.log('✅ Got AI response:', aiResponse);
         
-        // 更新加载中的消息为实际的 AI 回复
+        // 创建最终的 AI 消息
         const finalAIMessage: Message = {
           id: generateId(),
           content: aiResponse,
@@ -298,11 +316,11 @@ export function useChatGraphQL(options: {
           timestamp: Date.now()
         };
         
-        // 更新本地消息状态，移除加载状态的消息，添加最终的 AI 回复
-        const finalMessages = [...tempMessages, finalAIMessage];
+        // 更新最终消息状态
+        const finalMessages = [...messagesWithUser, finalAIMessage];
         setLocalMessages(finalMessages);
         
-        // 同时更新会话存储，确保消息持久化
+        // 更新会话存储
         updateSessionMessages(finalMessages);
       } else {
         // 使用本地模拟
@@ -338,23 +356,24 @@ export function useChatGraphQL(options: {
       // 清空输入框
       setInputValue('');
     } catch (error) {
-      console.error('Error sending message:', error);
-      const errorMessage = useGraphQL ? handleError(error) : (error instanceof Error ? error.message : '发送消息时出现错误');
+      console.error('❌ Error sending message:', error);
+      const errorMessage = error instanceof Error ? error.message : '发送消息时出现错误';
       setError(errorMessage);
       
       if (useGraphQL) {
-        // GraphQL 错误处理 - 显示错误消息
+        // GraphQL 错误处理 - 简化错误显示
         const aiErrorMessage: Message = {
           id: generateId(),
-          content: '抱歉，发送消息时出现错误，请稍后重试。',
+          content: `抱歉，发送消息时出现错误：${errorMessage}`,
           sender: 'ai',
           timestamp: Date.now()
         };
         
-        // 获取当前的用户消息（如果还没有添加到 messages 中）
-        const currentMessages = messages.some(msg => msg.id === userMessage.id) ? messages : [...messages, userMessage];
-        const messagesWithError = [...currentMessages.filter(msg => !msg.isLoading), aiErrorMessage];
+        // 简化错误状态更新
+        const messagesWithUser = [...messages, userMessage];
+        const messagesWithError = [...messagesWithUser, aiErrorMessage];
         setLocalMessages(messagesWithError);
+        updateSessionMessages(messagesWithError);
       } else {
         // 本地错误处理
         const aiErrorMessage: Message = {

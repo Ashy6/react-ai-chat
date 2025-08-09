@@ -46,28 +46,52 @@ const typeDefs = `
 
 // DeepSeek API 调用函数
 async function callDeepSeekAPI(messages, apiKey) {
+  console.log('Calling DeepSeek API with messages:', messages.length);
+  console.log('API Key prefix:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+  
+  // 转换消息格式，确保role正确映射
+  const formattedMessages = messages.map(msg => {
+    let role = msg.role;
+    if (role === 'USER') role = 'user';
+    if (role === 'ASSISTANT') role = 'assistant';
+    if (role === 'SYSTEM') role = 'system';
+    
+    return {
+      role: role.toLowerCase(),
+      content: msg.content
+    };
+  });
+  
+  console.log('Formatted messages for API:', formattedMessages);
+  
+  const requestBody = {
+    model: 'deepseek-chat',
+    messages: formattedMessages,
+    max_tokens: 2000,
+    temperature: 0.7,
+  };
+  
+  console.log('Request body:', JSON.stringify(requestBody, null, 2));
+  
   const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: messages.map(msg => ({
-        role: msg.role.toLowerCase(),
-        content: msg.content
-      })),
-      max_tokens: 2000,
-      temperature: 0.7,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
+  console.log('DeepSeek API response status:', response.status);
+  
   if (!response.ok) {
-    throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('DeepSeek API error response:', errorText);
+    throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();
+  console.log('DeepSeek API response data:', data);
   return data.choices[0].message.content;
 }
 
@@ -120,9 +144,17 @@ const resolvers = {
 
       // 如果是用户消息，调用 DeepSeek API 获取回复
       if (role === 'USER') {
-        try {
+        // try {
+          // 添加调试信息
+          console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY);
+          console.log('DEEPSEEK_API_KEY length:', DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.length : 0);
+          
+          if (!DEEPSEEK_API_KEY) {
+            throw new Error('DEEPSEEK_API_KEY is not configured');
+          }
+          
           const aiResponse = await callDeepSeekAPI(session.messages, DEEPSEEK_API_KEY);
-
+          console.log('2233 DeepSeek API response:', aiResponse);
           const assistantMessage = {
             id: generateId(),
             content: aiResponse,
@@ -131,19 +163,19 @@ const resolvers = {
           };
 
           session.messages.push(assistantMessage);
-        } catch (error) {
-          console.error('DeepSeek API error:', error);
+        // } catch (error) {
+        //   console.error('DeepSeek API error:', error);
 
-          // 如果 API 调用失败，返回错误消息
-          const errorMessage = {
-            id: generateId(),
-            content: '抱歉，我现在无法回复。请稍后再试。',
-            role: 'ASSISTANT',
-            timestamp: new Date().toISOString(),
-          };
+        //   // 如果 API 调用失败，返回错误消息
+        //   const errorMessage = {
+        //     id: generateId(),
+        //     content: '抱歉，我现在无法回复。请稍后再试。',
+        //     role: 'ASSISTANT',
+        //     timestamp: new Date().toISOString(),
+        //   };
 
-          session.messages.push(errorMessage);
-        }
+        //   session.messages.push(errorMessage);
+        // }
       }
 
       // 更新会话
