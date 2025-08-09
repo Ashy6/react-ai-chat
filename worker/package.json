@@ -1,0 +1,23 @@
+{
+  "name": "deepseek-graphql-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for DeepSeek GraphQL API",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "graphql",
+    "deepseek",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}

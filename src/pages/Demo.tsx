@@ -27,7 +27,7 @@ const simulateAIResponse = async (userMessage: string): Promise<string> => {
  */
 export function Demo() {
   const [activeTab, setActiveTab] = useState<'standard' | 'compact' | 'custom' | 'graphql'>('standard');
-  const [useGraphQL, setUseGraphQL] = useState(false);
+  const [useGraphQL, setUseGraphQL] = useState(true); // 默认开启 GraphQL 模式
   const chatSessions = useChatSessions();
 
   // 处理消息发送

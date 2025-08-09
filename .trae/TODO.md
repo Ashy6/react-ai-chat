@@ -1,8 +1,7 @@
 # TODO:
 
-- [x] git-1: 检查项目是否已经初始化 Git 仓库 (priority: High)
-- [x] git-2: 初始化 Git 仓库（如果需要） (priority: High)
-- [x] git-4: 添加所有项目文件到 Git (priority: High)
-- [x] git-5: 创建初始提交 (priority: High)
-- [x] git-3: 检查并优化 .gitignore 文件 (priority: Medium)
-- [ ] git-6: 提供连接到 GitHub 远程仓库的指导说明 (**IN PROGRESS**) (priority: Medium)
+- [x] graphql-fix-1: 检查前端 GraphQL 查询与 Worker Schema 的匹配问题 (priority: High)
+- [x] graphql-fix-3: 更新前端 GraphQL 查询格式使其与 Worker 兼容 (priority: High)
+- [x] graphql-fix-2: 修复 Apollo Client 配置和错误处理 (priority: High)
+- [x] graphql-fix-4: 设置默认开启 GraphQL 模式 (priority: Medium)
+- [x] graphql-fix-5: 测试修复后的聊天功能 (priority: Medium)

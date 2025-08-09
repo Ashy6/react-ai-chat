@@ -2,9 +2,9 @@ import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/clien
 import { onError } from '@apollo/client/link/error';
 import { setContext } from '@apollo/client/link/context';
 
-// GraphQL endpoint - 将来会指向 Cloudflare Workers
+// GraphQL endpoint - 指向 Cloudflare Workers
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:8787',
 });
 
 // 错误处理链接

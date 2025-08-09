@@ -1,7 +1,56 @@
 // GraphQL 类型定义
 
-// 消息类型
+// 消息角色枚举 - 匹配 Worker Schema
+export type MessageRole = 'USER' | 'ASSISTANT';
+
+// GraphQL 消息类型 - 匹配 Worker Schema
 export interface GraphQLMessage {
+  id: string;
+  content: string;
+  role: MessageRole;
+  timestamp: string; // ISO string from Worker
+}
+
+// GraphQL 聊天会话类型 - 匹配 Worker Schema
+export interface GraphQLChatSession {
+  id: string;
+  messages: GraphQLMessage[];
+  createdAt: string; // ISO string from Worker
+  updatedAt: string; // ISO string from Worker
+}
+
+// 发送消息的输入类型 - 匹配 Worker Schema
+export interface SendMessageInput {
+  sessionId: string;
+  content: string;
+  role: MessageRole;
+}
+
+// 发送消息的响应类型 - 匹配 Worker Schema
+export interface SendMessageResponse {
+  message: GraphQLMessage;
+  session: GraphQLChatSession;
+}
+
+// Hello 查询响应类型
+export interface HelloResponse {
+  hello: string;
+}
+
+// 获取聊天会话的响应类型
+export interface GetChatSessionResponse {
+  getChatSession: GraphQLChatSession | null;
+}
+
+// 创建聊天会话的响应类型
+export interface CreateChatSessionResponse {
+  createChatSession: GraphQLChatSession;
+}
+
+// 以下是为了向后兼容保留的类型定义，用于非 GraphQL 模式
+
+// 旧版消息类型（向后兼容）
+export interface LegacyGraphQLMessage {
   id: string;
   content: string;
   sender: 'user' | 'ai';
@@ -10,32 +59,32 @@ export interface GraphQLMessage {
   isLoading?: boolean;
 }
 
-// 聊天会话类型
-export interface GraphQLChatSession {
+// 旧版聊天会话类型（向后兼容）
+export interface LegacyGraphQLChatSession {
   id: string;
   userId?: string;
-  messages: GraphQLMessage[];
+  messages: LegacyGraphQLMessage[];
   createdAt: number;
   updatedAt: number;
   title?: string;
 }
 
-// 发送消息的输入类型
-export interface SendMessageInput {
+// 旧版发送消息的输入类型（向后兼容）
+export interface LegacySendMessageInput {
   content: string;
   sessionId: string;
   userId?: string;
 }
 
-// 发送消息的响应类型
-export interface SendMessageResponse {
+// 旧版发送消息的响应类型（向后兼容）
+export interface LegacySendMessageResponse {
   success: boolean;
-  message?: GraphQLMessage;
-  aiResponse?: GraphQLMessage;
+  message?: LegacyGraphQLMessage;
+  aiResponse?: LegacyGraphQLMessage;
   error?: string;
 }
 
-// 获取聊天历史的输入类型
+// 获取聊天历史的输入类型（向后兼容）
 export interface GetChatHistoryInput {
   sessionId: string;
   userId?: string;
@@ -43,23 +92,23 @@ export interface GetChatHistoryInput {
   offset?: number;
 }
 
-// 获取聊天历史的响应类型
+// 获取聊天历史的响应类型（向后兼容）
 export interface GetChatHistoryResponse {
-  messages: GraphQLMessage[];
+  messages: LegacyGraphQLMessage[];
   hasMore: boolean;
   total: number;
 }
 
-// 创建会话的输入类型
+// 创建会话的输入类型（向后兼容）
 export interface CreateSessionInput {
   userId?: string;
   title?: string;
 }
 
-// 创建会话的响应类型
+// 创建会话的响应类型（向后兼容）
 export interface CreateSessionResponse {
   success: boolean;
-  session?: GraphQLChatSession;
+  session?: LegacyGraphQLChatSession;
   error?: string;
 }
 
