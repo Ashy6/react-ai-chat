@@ -7,6 +7,22 @@ import { traeBadgePlugin } from 'vite-plugin-trae-solo-badge';
 export default defineConfig({
   build: {
     sourcemap: 'hidden',
+    rollupOptions: {
+      output: {
+        // Ensure proper file extensions for modules
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        // Ensure ES modules format
+        format: 'es'
+      }
+    },
+    // Ensure target supports ES modules
+    target: 'es2020',
+    // Enable module preload polyfill
+    modulePreload: {
+      polyfill: true
+    }
   },
   plugins: [
     react({

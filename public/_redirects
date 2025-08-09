@@ -1,0 +1,17 @@
+# Cloudflare Pages Redirects Configuration
+# Handle SPA routing - redirect all non-file requests to index.html
+
+# API routes should not be redirected (if any)
+/api/* 200
+
+# Static assets should not be redirected
+/assets/* 200
+
+# Favicon and other root files
+/favicon.* 200
+/robots.txt 200
+/sitemap.xml 200
+/manifest.json 200
+
+# All other routes should serve index.html for SPA routing
+/* /index.html 200

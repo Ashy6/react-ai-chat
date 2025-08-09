@@ -1,7 +1,7 @@
 # TODO:
 
-- [x] graphql-fix-1: 检查前端 GraphQL 查询与 Worker Schema 的匹配问题 (priority: High)
-- [x] graphql-fix-3: 更新前端 GraphQL 查询格式使其与 Worker 兼容 (priority: High)
-- [x] graphql-fix-2: 修复 Apollo Client 配置和错误处理 (priority: High)
-- [x] graphql-fix-4: 设置默认开启 GraphQL 模式 (priority: Medium)
-- [x] graphql-fix-5: 测试修复后的聊天功能 (priority: Medium)
+- [x] mime-1: 分析 MIME 类型错误的根本原因 (priority: High)
+- [x] mime-2: 检查当前 Vite 配置文件 (priority: High)
+- [x] mime-3: 检查部署平台配置（Vercel/Netlify 等） (priority: High)
+- [x] mime-4: 创建或更新服务器 MIME 类型配置文件 (priority: High)
+- [x] mime-5: 测试修复后的部署效果 (priority: Medium)
