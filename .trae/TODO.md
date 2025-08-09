@@ -1,7 +1,7 @@
 # TODO:
 
-- [x] mime-1: 分析 MIME 类型错误的根本原因 (priority: High)
-- [x] mime-2: 检查当前 Vite 配置文件 (priority: High)
-- [x] mime-3: 检查部署平台配置（Vercel/Netlify 等） (priority: High)
-- [x] mime-4: 创建或更新服务器 MIME 类型配置文件 (priority: High)
-- [x] mime-5: 测试修复后的部署效果 (priority: Medium)
+- [x] message-state-1: 检查当前聊天状态管理逻辑，分析消息丢失的根本原因 (priority: High)
+- [x] message-state-2: 检查 useChat 和 useChatGraphQL hooks 的消息状态处理 (priority: High)
+- [x] message-state-3: 检查 ChatContainer 组件的消息渲染和状态更新逻辑 (priority: High)
+- [x] message-state-4: 修复 useChatGraphQL.ts 中的消息状态保留问题 (priority: High)
+- [x] message-state-5: 测试修复后的聊天功能，验证消息状态持久化 (priority: Medium)
