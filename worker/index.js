@@ -46,53 +46,59 @@ const typeDefs = `
 
 // DeepSeek API 调用函数
 async function callDeepSeekAPI(messages, apiKey) {
-  console.log('Calling DeepSeek API with messages:', messages.length);
-  console.log('API Key prefix:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
-  
-  // 转换消息格式，确保role正确映射
-  const formattedMessages = messages.map(msg => {
-    let role = msg.role;
-    if (role === 'USER') role = 'user';
-    if (role === 'ASSISTANT') role = 'assistant';
-    if (role === 'SYSTEM') role = 'system';
-    
-    return {
-      role: role.toLowerCase(),
-      content: msg.content
-    };
-  });
-  
-  console.log('Formatted messages for API:', formattedMessages);
-  
+  // 移除 console.log 调试语句
+
+  if (!apiKey) {
+    throw new Error('DEEPSEEK_API_KEY is not configured');
+  }
+
+  // 转换消息格式为 DeepSeek API 格式
+  const formattedMessages = messages.map(msg => ({
+    role: msg.role === 'USER' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
+  // 移除 console.log 调试语句
+
   const requestBody = {
     model: 'deepseek-chat',
     messages: formattedMessages,
-    max_tokens: 2000,
     temperature: 0.7,
+    max_tokens: 2000,
+    stream: false
   };
-  
-  console.log('Request body:', JSON.stringify(requestBody, null, 2));
-  
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
 
-  console.log('DeepSeek API response status:', response.status);
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('DeepSeek API error response:', errorText);
-    throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
+  // 移除 console.log 调试语句
+
+  try {
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    // 移除 console.log 调试语句
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      // 移除 console.error 调试语句
+      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    // 移除 console.log 调试语句
+
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
+    } else {
+      throw new Error('Invalid response format from DeepSeek API');
+    }
+  } catch (error) {
+    throw error;
   }
-
-  const data = await response.json();
-  console.log('DeepSeek API response data:', data);
-  return data.choices[0].message.content;
 }
 
 // 生成唯一 ID
@@ -111,83 +117,72 @@ const resolvers = {
   },
   Mutation: {
     createChatSession: async (parent, args, { CHAT_SESSIONS }) => {
-      const sessionId = generateId();
+      const sessionId = generateSessionId();
+      
+      // 在 KV 存储中创建会话记录
       const session = {
         id: sessionId,
-        messages: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        messages: []
       };
-
-      await CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+      
+      await context.CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+      
       return session;
     },
-    sendMessage: async (parent, { input }, { CHAT_SESSIONS, DEEPSEEK_API_KEY }) => {
-      const { sessionId, content, role } = input;
-
-      // 获取现有会话
-      let session = await CHAT_SESSIONS.get(sessionId);
-      if (!session) {
-        throw new Error('Chat session not found');
+    
+    sendMessage: async (parent, { sessionId, content }, context) => {
+      try {
+        // 获取会话信息
+        const sessionData = await context.CHAT_SESSIONS.get(sessionId);
+        if (!sessionData) {
+          throw new Error('Session not found');
+        }
+        
+        const session = JSON.parse(sessionData);
+        
+        // 添加用户消息
+        const userMessage = {
+          id: generateMessageId(),
+          content,
+          role: 'USER',
+          createdAt: new Date().toISOString()
+        };
+        
+        session.messages.push(userMessage);
+        
+        // 获取 API 密钥
+        const DEEPSEEK_API_KEY = context.DEEPSEEK_API_KEY;
+        // 移除 console.log 调试语句
+        
+        if (!DEEPSEEK_API_KEY) {
+          throw new Error('DEEPSEEK_API_KEY not configured');
+        }
+        
+        // 调用 DeepSeek API
+        const aiResponse = await callDeepSeekAPI(session.messages, DEEPSEEK_API_KEY);
+        // 移除 console.log 调试语句
+        
+        // 创建 AI 回复消息
+        const aiMessage = {
+          id: generateMessageId(),
+          content: aiResponse,
+          role: 'ASSISTANT',
+          createdAt: new Date().toISOString()
+        };
+        
+        session.messages.push(aiMessage);
+        
+        // 更新会话
+        await context.CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+        
+        return aiMessage;
+      } catch (error) {
+        // 移除 console.error 调试语句
+        throw error;
       }
-      session = JSON.parse(session);
-
-      // 创建用户消息
-      const userMessage = {
-        id: generateId(),
-        content,
-        role,
-        timestamp: new Date().toISOString(),
-      };
-
-      session.messages.push(userMessage);
-
-      // 如果是用户消息，调用 DeepSeek API 获取回复
-      if (role === 'USER') {
-        // try {
-          // 添加调试信息
-          console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY);
-          console.log('DEEPSEEK_API_KEY length:', DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.length : 0);
-          
-          if (!DEEPSEEK_API_KEY) {
-            throw new Error('DEEPSEEK_API_KEY is not configured');
-          }
-          
-          const aiResponse = await callDeepSeekAPI(session.messages, DEEPSEEK_API_KEY);
-          console.log('2233 DeepSeek API response:', aiResponse);
-          const assistantMessage = {
-            id: generateId(),
-            content: aiResponse,
-            role: 'ASSISTANT',
-            timestamp: new Date().toISOString(),
-          };
-
-          session.messages.push(assistantMessage);
-        // } catch (error) {
-        //   console.error('DeepSeek API error:', error);
-
-        //   // 如果 API 调用失败，返回错误消息
-        //   const errorMessage = {
-        //     id: generateId(),
-        //     content: '抱歉，我现在无法回复。请稍后再试。',
-        //     role: 'ASSISTANT',
-        //     timestamp: new Date().toISOString(),
-        //   };
-
-        //   session.messages.push(errorMessage);
-        // }
-      }
-
-      // 更新会话
-      session.updatedAt = new Date().toISOString();
-      await CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
-
-      return {
-        message: session.messages[session.messages.length - 1],
-        session,
-      };
-    },
-  },
+    }
+  }
 };
 
 // 简化的 GraphQL 执行器
@@ -221,69 +216,132 @@ async function executeGraphQL(query, variables, context) {
 // Worker 主入口
 export default {
   async fetch(request, env, ctx) {
-    // 处理 CORS
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
-
+    const url = new URL(request.url);
+    
+    // 处理 CORS 预检请求
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
-    if (request.method === 'POST') {
+    // 处理 GraphQL 请求
+    if (url.pathname === '/graphql' && request.method === 'POST') {
       try {
-        const { query, variables } = await request.json();
+        const body = await request.json();
+        // 移除 console.log 调试语句
 
-        const context = {
-          CHAT_SESSIONS: env.CHAT_SESSIONS,
-          DEEPSEEK_API_KEY: env.DEEPSEEK_API_KEY,
-        };
+        const { query, variables } = body;
 
-        const result = await executeGraphQL(query, variables, context);
-
-        return new Response(JSON.stringify(result), {
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        });
-      } catch (error) {
-        return new Response(
-          JSON.stringify({
-            errors: [{ message: error.message }]
-          }),
-          {
-            status: 500,
+        // 处理创建会话
+        if (query.includes('createChatSession')) {
+          const sessionId = generateSessionId();
+          // 移除 console.log 调试语句
+          
+          return new Response(JSON.stringify({
+            data: {
+              createChatSession: {
+                id: sessionId,
+                createdAt: new Date().toISOString()
+              }
+            }
+          }), {
             headers: {
               'Content-Type': 'application/json',
-              ...corsHeaders,
+              'Access-Control-Allow-Origin': '*',
             },
+          });
+        }
+
+        // 处理发送消息
+        if (query.includes('sendMessage')) {
+          const { sessionId, content } = variables;
+          // 移除 console.log 调试语句
+
+          try {
+            // 获取 API 密钥
+            const apiKey = env.DEEPSEEK_API_KEY;
+            if (!apiKey) {
+              throw new Error('DEEPSEEK_API_KEY not configured');
+            }
+
+            // 构建消息历史（这里简化处理，实际应该从数据库获取）
+            const messages = [
+              { role: 'USER', content: content }
+            ];
+
+            // 调用 DeepSeek API
+            const aiResponse = await callDeepSeekAPI(messages, apiKey);
+            // 移除 console.log 调试语句
+
+            return new Response(JSON.stringify({
+              data: {
+                sendMessage: {
+                  id: generateMessageId(),
+                  content: aiResponse,
+                  role: 'ASSISTANT',
+                  createdAt: new Date().toISOString()
+                }
+              }
+            }), {
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+
+          } catch (error) {
+            // 移除 console.error 调试语句
+            return new Response(JSON.stringify({
+              errors: [{
+                message: `AI service error: ${error.message}`,
+                extensions: { code: 'AI_SERVICE_ERROR' }
+              }]
+            }), {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
           }
-        );
+        }
+
+        // 未知的 GraphQL 操作
+        return new Response(JSON.stringify({
+          errors: [{ message: 'Unknown GraphQL operation' }]
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+
+      } catch (error) {
+        // 移除 console.error 调试语句
+        return new Response(JSON.stringify({
+          errors: [{ message: 'Invalid request format' }]
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
       }
     }
 
-    // GET 请求返回 GraphQL Playground 或简单信息
-    if (request.method === 'GET') {
-      return new Response(
-        JSON.stringify({
-          message: 'DeepSeek GraphQL API is running!',
-          endpoint: '/graphql'
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    return new Response('Method not allowed', {
-      status: 405,
-      headers: corsHeaders,
+    // 默认响应
+    return new Response('Hello from Cloudflare Worker!', {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   },
 };

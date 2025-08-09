@@ -16,7 +16,7 @@ export function useLocalStorage<T>(
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+      // 移除 console.warn 调试语句
       return initialValue;
     }
   });
@@ -34,7 +34,7 @@ export function useLocalStorage<T>(
         // 保存到 localStorage
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
       } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
+        // 移除 console.warn 调试语句
       }
     },
     [key, storedValue]
@@ -47,7 +47,7 @@ export function useLocalStorage<T>(
         try {
           setStoredValue(JSON.parse(e.newValue));
         } catch (error) {
-          console.warn(`Error parsing localStorage value for key "${key}":`, error);
+          // 移除 console.warn 调试语句
         }
       }
     };
@@ -69,7 +69,7 @@ export function useRemoveLocalStorage(key: string) {
     try {
       window.localStorage.removeItem(key);
     } catch (error) {
-      console.warn(`Error removing localStorage key "${key}":`, error);
+      // 移除 console.warn 调试语句
     }
   }, [key]);
 }
@@ -83,7 +83,7 @@ export function useClearLocalStorage() {
     try {
       window.localStorage.clear();
     } catch (error) {
-      console.warn('Error clearing localStorage:', error);
+      // 移除 console.warn 调试语句
     }
   }, []);
 }

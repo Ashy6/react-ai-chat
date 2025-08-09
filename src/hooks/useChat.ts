@@ -184,7 +184,6 @@ export function useChat(options: {
       const finalMessages = [...messagesWithUser, finalAIMessage];
       updateSessionMessages(finalMessages);
     } catch (error) {
-      console.error('Error sending message:', error);
       setError(error instanceof Error ? error.message : '发送消息时出现错误');
       
       // 发送错误消息
