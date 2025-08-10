@@ -163,10 +163,10 @@ export function useChatGraphQL(options: {
       
       if (newSessionId) {
         setGraphqlSessionId(newSessionId);
-        console.log('Created GraphQL session:', newSessionId);
+        // 移除 console.log 调试语句
       }
     } catch (error) {
-      console.error('Failed to create GraphQL session:', error);
+      // 移除 console.error 调试语句
       setError('无法创建聊天会话');
     }
   }, [useGraphQL, graphqlSessionId, createChatSessionMutation]);
@@ -221,51 +221,43 @@ export function useChatGraphQL(options: {
       throw new Error('GraphQL 会话未初始化');
     }
 
-    try {
-      const input = {
-        sessionId: graphqlSessionId,
-        content: content.trim(),
-        role: 'USER' as const
-      };
+    const input = {
+      sessionId: graphqlSessionId,
+      content: content.trim(),
+      role: 'USER' as const
+    };
 
-      console.log('🚀 Sending GraphQL message:', input);
+    // 移除 console.log 调试语句
 
-      const result = await sendMessageMutation({
-        variables: { input }
-      });
+    const result = await sendMessageMutation({
+      variables: { input }
+    });
 
-      console.log('📨 GraphQL response:', result);
-      console.log('📨 Response data:', result.data);
-      console.log('📨 SendMessage data:', result.data?.sendMessage);
-      console.log('📨 Message content:', result.data?.sendMessage?.message?.content);
+    // 移除 console.log 调试语句
 
-      if (result.errors && result.errors.length > 0) {
-        console.error('❌ GraphQL errors:', result.errors);
-        throw new Error(result.errors[0].message);
-      }
-
-      if (!result.data?.sendMessage?.message?.content) {
-        console.error('❌ No message content in response');
-        throw new Error('未收到有效的回复内容');
-      }
-
-      const aiResponse = result.data.sendMessage.message.content;
-      console.log('✅ AI Response:', aiResponse);
-
-      // 检查是否是错误消息
-      if (aiResponse === '抱歉，我现在无法回复。请稍后再试。') {
-        console.error('❌ Received error message from AI');
-        throw new Error('AI 服务暂时不可用');
-      }
-
-      // 刷新会话数据
-      await refetchSession();
-
-      return aiResponse;
-    } catch (error) {
-      console.error('❌ GraphQL send message error:', error);
-      throw error; // 直接抛出原始错误，不再包装
+    if (result.errors && result.errors.length > 0) {
+      // 移除 console.error 调试语句
+      throw new Error(result.errors[0].message);
     }
+
+    if (!result.data?.sendMessage?.message?.content) {
+      // 移除 console.error 调试语句
+      throw new Error('未收到有效的回复内容');
+    }
+
+    const aiResponse = result.data.sendMessage.message.content;
+    // 移除 console.log 调试语句
+
+    // 检查是否是错误消息
+    if (aiResponse === '抱歉，我现在无法回复。请稍后再试。') {
+      // 移除 console.error 调试语句
+      throw new Error('AI 服务暂时不可用');
+    }
+
+    // 刷新会话数据
+    await refetchSession();
+
+    return aiResponse;
   }, [graphqlSessionId, sendMessageMutation, refetchSession]);
 
   // 发送消息
@@ -285,7 +277,7 @@ export function useChatGraphQL(options: {
     try {
       if (useGraphQL) {
         // 使用 GraphQL - 简化状态管理
-        console.log('📝 Adding user message to local state');
+        // 移除 console.log 调试语句
         
         // 添加用户消息
         const messagesWithUser = [...messages, userMessage];
@@ -303,10 +295,10 @@ export function useChatGraphQL(options: {
         const messagesWithLoading = [...messagesWithUser, loadingAIMessage];
         setLocalMessages(messagesWithLoading);
         
-        console.log('🤖 Calling GraphQL API...');
+        // 移除 console.log 调试语句
         // 发送 GraphQL 请求
         const aiResponse = await sendMessageGraphQL(content);
-        console.log('✅ Got AI response:', aiResponse);
+        // 移除 console.log 调试语句
         
         // 创建最终的 AI 消息
         const finalAIMessage: Message = {
@@ -356,7 +348,7 @@ export function useChatGraphQL(options: {
       // 清空输入框
       setInputValue('');
     } catch (error) {
-      console.error('❌ Error sending message:', error);
+      // 移除 console.error 调试语句
       const errorMessage = error instanceof Error ? error.message : '发送消息时出现错误';
       setError(errorMessage);
       

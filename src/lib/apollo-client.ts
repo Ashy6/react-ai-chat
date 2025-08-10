@@ -11,14 +11,12 @@ const httpLink = createHttpLink({
 const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) => {
-      console.error(
-        `GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`
-      );
+      // 移除 console.error 调试语句
     });
   }
 
   if (networkError) {
-    console.error(`Network error: ${networkError}`);
+    // 移除 console.error 调试语句
   }
 });
 

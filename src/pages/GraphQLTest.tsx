@@ -18,7 +18,7 @@ const GraphQLTest: React.FC = () => {
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
-    console.log(`[GraphQL Test] ${message}`);
+    // 移除 console.log 调试语句
   };
 
   const handleCreateSession = async () => {
