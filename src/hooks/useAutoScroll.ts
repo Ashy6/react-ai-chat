@@ -7,7 +7,7 @@ import { useEffect, useRef, RefObject, useState, useCallback } from 'react';
  * @returns 滚动容器的 ref
  */
 export function useAutoScroll<T extends HTMLElement>(
-  dependency: any[],
+  dependency: unknown[],
   smooth: boolean = true
 ): RefObject<T> {
   const scrollRef = useRef<T>(null);
@@ -33,7 +33,7 @@ export function useAutoScroll<T extends HTMLElement>(
     const timeoutId = setTimeout(scrollToBottom, 0);
     
     return () => clearTimeout(timeoutId);
-  }, dependency);
+  }, [smooth, ...dependency]);
 
   return scrollRef;
 }
@@ -83,7 +83,7 @@ export function useScrollToBottom<T extends HTMLElement>(
  * @returns [滚动容器的 ref, 是否在底部, 手动滚动到底部的函数]
  */
 export function useSmartAutoScroll<T extends HTMLElement>(
-  dependency: any[],
+  dependency: unknown[],
   threshold: number = 100
 ): [RefObject<T>, boolean, () => void] {
   const [isAtBottom, scrollRef, scrollToBottom] = useScrollToBottom<T>(threshold);
@@ -95,7 +95,7 @@ export function useSmartAutoScroll<T extends HTMLElement>(
       }, 0);
       return () => clearTimeout(timeoutId);
     }
-  }, [...dependency, isAtBottom]);
+  }, [...dependency, isAtBottom, scrollToBottom]);
 
   return [scrollRef, isAtBottom, scrollToBottom];
 }

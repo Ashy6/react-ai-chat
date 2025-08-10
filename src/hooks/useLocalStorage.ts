@@ -15,7 +15,7 @@ export function useLocalStorage<T>(
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
+    } catch {
       // 移除 console.warn 调试语句
       return initialValue;
     }
@@ -33,7 +33,7 @@ export function useLocalStorage<T>(
         
         // 保存到 localStorage
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      } catch (error) {
+      } catch {
         // 移除 console.warn 调试语句
       }
     },
@@ -46,7 +46,7 @@ export function useLocalStorage<T>(
       if (e.key === key && e.newValue !== null) {
         try {
           setStoredValue(JSON.parse(e.newValue));
-        } catch (error) {
+        } catch {
           // 移除 console.warn 调试语句
         }
       }
@@ -68,7 +68,7 @@ export function useRemoveLocalStorage(key: string) {
   return useCallback(() => {
     try {
       window.localStorage.removeItem(key);
-    } catch (error) {
+    } catch {
       // 移除 console.warn 调试语句
     }
   }, [key]);
@@ -82,7 +82,7 @@ export function useClearLocalStorage() {
   return useCallback(() => {
     try {
       window.localStorage.clear();
-    } catch (error) {
+    } catch {
       // 移除 console.warn 调试语句
     }
   }, []);

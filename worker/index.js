@@ -29,7 +29,7 @@ const typeDefs = `
 
   enum MessageRole {
     USER
-    ASSISTANT
+    AI
   }
 
   input SendMessageInput {
@@ -126,22 +126,27 @@ const resolvers = {
     },
   },
   Mutation: {
-    createChatSession: async (parent, args, { CHAT_SESSIONS }) => {
+    createChatSession: async (parent, args, context) => {
       const sessionId = generateSessionId();
       
-      // 在 KV 存储中创建会话记录
+      // 创建会话记录
       const session = {
         id: sessionId,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         messages: []
       };
       
-      await context.CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+      // 如果有KV存储，保存会话
+      if (context.CHAT_SESSIONS) {
+        await context.CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+      }
       
       return session;
     },
     
-    sendMessage: async (parent, { sessionId, content }, context) => {
+    sendMessage: async (parent, { input }, context) => {
+      const { sessionId, content } = input;
       try {
         // 获取会话信息
         const sessionData = await context.CHAT_SESSIONS.get(sessionId);
@@ -156,7 +161,7 @@ const resolvers = {
           id: generateMessageId(),
           content,
           role: 'USER',
-          createdAt: new Date().toISOString()
+          timestamp: new Date().toISOString()
         };
         
         session.messages.push(userMessage);
@@ -177,8 +182,8 @@ const resolvers = {
         const aiMessage = {
           id: generateMessageId(),
           content: aiResponse,
-          role: 'ASSISTANT',
-          createdAt: new Date().toISOString()
+          role: 'AI',
+          timestamp: new Date().toISOString()
         };
         
         session.messages.push(aiMessage);
@@ -217,7 +222,7 @@ async function executeGraphQL(query, variables, context) {
 
   if (query.includes('sendMessage')) {
     const result = await resolvers.Mutation.sendMessage(null, { input: variables.input }, context);
-    return { data: { sendMessage: result } };
+    return { data: { sendMessage: { message: result, session: { id: variables.input.sessionId, messages: [result], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } } } };
   }
 
   return { errors: [{ message: 'Unknown query' }] };
@@ -244,7 +249,7 @@ export default {
     if (url.pathname === '/graphql' && request.method === 'POST') {
       try {
         const body = await request.json();
-        // 移除 console.log 调试语句
+        console.log('GraphQL request received:', { query: body.query, variables: body.variables });
 
         const { query, variables } = body;
 
@@ -271,7 +276,9 @@ export default {
             data: {
               createChatSession: {
                 id: sessionId,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messages: []
               }
             }
           }), {
@@ -282,11 +289,92 @@ export default {
           });
         }
 
+        // 处理获取会话
+        if (query.includes('getChatSession')) {
+          console.log('Processing getChatSession with variables:', variables);
+          const { sessionId } = variables;
+          if (!sessionId) {
+            console.error('Missing sessionId in getChatSession variables');
+            return new Response(JSON.stringify({
+              errors: [{ message: 'Missing sessionId parameter' }]
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          }
+
+          try {
+            // 从KV存储获取会话数据
+            const sessionData = await env.CHAT_SESSIONS?.get(sessionId);
+            if (!sessionData) {
+              // 如果会话不存在，返回空会话
+              return new Response(JSON.stringify({
+                data: {
+                  getChatSession: {
+                    id: sessionId,
+                    messages: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  }
+                }
+              }), {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*',
+                },
+              });
+            }
+
+            const session = JSON.parse(sessionData);
+            return new Response(JSON.stringify({
+              data: {
+                getChatSession: session
+              }
+            }), {
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+
+          } catch (error) {
+            console.error('getChatSession error:', error);
+            return new Response(JSON.stringify({
+              errors: [{
+                message: `Failed to get chat session: ${error.message}`,
+                extensions: { code: 'SESSION_FETCH_ERROR' }
+              }]
+            }), {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          }
+        }
+
         // 处理发送消息
         if (query.includes('sendMessage')) {
+          console.log('Processing sendMessage with variables:', variables);
           const { input } = variables;
+          if (!input) {
+            console.error('Missing input in sendMessage variables');
+            return new Response(JSON.stringify({
+              errors: [{ message: 'Missing input parameter' }]
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          }
           const { sessionId, content } = input;
-          // 移除 console.log 调试语句
+          console.log('SendMessage input:', { sessionId, content, role: input.role });
 
           try {
             // 获取 API 密钥
@@ -295,32 +383,60 @@ export default {
               throw new Error('DEEPSEEK_API_KEY not configured');
             }
 
-            // 构建消息历史（这里简化处理，实际应该从数据库获取）
-            const messages = [
-              { role: 'USER', content: content }
-            ];
+            // 获取或创建会话数据
+            let session;
+            const existingSessionData = await env.CHAT_SESSIONS?.get(sessionId);
+            if (existingSessionData) {
+              session = JSON.parse(existingSessionData);
+            } else {
+              // 创建新会话
+              session = {
+                id: sessionId,
+                messages: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+            }
+
+            // 添加用户消息
+            const userMessage = {
+              id: generateMessageId(),
+              content: content,
+              role: 'USER',
+              timestamp: new Date().toISOString()
+            };
+            session.messages.push(userMessage);
+
+            // 构建消息历史用于API调用
+            const apiMessages = session.messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            }));
 
             // 调用 DeepSeek API
-            const aiResponse = await callDeepSeekAPI(messages, apiKey);
+            const aiResponse = await callDeepSeekAPI(apiMessages, apiKey);
             // 移除 console.log 调试语句
 
+            // 添加AI回复消息
             const aiMessage = {
               id: generateMessageId(),
               content: aiResponse,
-              role: 'ASSISTANT',
+              role: 'AI',
               timestamp: new Date().toISOString()
             };
+            session.messages.push(aiMessage);
+            session.updatedAt = new Date().toISOString();
+
+            // 保存更新后的会话到KV存储
+            if (env.CHAT_SESSIONS) {
+              await env.CHAT_SESSIONS.put(sessionId, JSON.stringify(session));
+            }
 
             return new Response(JSON.stringify({
               data: {
                 sendMessage: {
                   message: aiMessage,
-                  session: {
-                    id: sessionId,
-                    messages: [aiMessage],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                  }
+                  session: session
                 }
               }
             }), {
@@ -359,9 +475,13 @@ export default {
         });
 
       } catch (error) {
-        // 移除 console.error 调试语句
+        console.error('GraphQL request parsing error:', error);
         return new Response(JSON.stringify({
-          errors: [{ message: 'Invalid request format' }]
+          errors: [{ 
+            message: 'Invalid request format', 
+            details: error.message,
+            stack: error.stack 
+          }]
         }), {
           status: 400,
           headers: {

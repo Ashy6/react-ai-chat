@@ -128,7 +128,7 @@ export function Demo() {
               ].map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key as any)}
+                  onClick={() => setActiveTab(tab.key as 'standard' | 'compact' | 'custom' | 'graphql')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.key
                       ? 'border-blue-500 text-blue-600'

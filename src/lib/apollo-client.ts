@@ -8,9 +8,9 @@ const httpLink = createHttpLink({
 });
 
 // 错误处理链接
-const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
+const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
-    graphQLErrors.forEach(({ message, locations, path }) => {
+    graphQLErrors.forEach(() => {
       // 移除 console.error 调试语句
     });
   }

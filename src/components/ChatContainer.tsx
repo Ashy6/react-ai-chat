@@ -17,7 +17,7 @@ interface ChatHeaderProps {
 function ChatHeader({ onClearHistory, messageCount, isLoading }: ChatHeaderProps) {
   const handleClearHistory = () => {
     if (messageCount === 0) return;
-    
+
     const confirmed = window.confirm('确定要清空聊天历史吗？此操作不可撤销。');
     if (confirmed) {
       onClearHistory();
@@ -37,15 +37,14 @@ function ChatHeader({ onClearHistory, messageCount, isLoading }: ChatHeaderProps
           </p>
         </div>
       </div>
-      
+
       <button
         onClick={handleClearHistory}
         disabled={messageCount === 0 || isLoading}
-        className={`p-2 rounded-lg transition-colors ${
-          messageCount === 0 || isLoading
-            ? 'text-gray-300 cursor-not-allowed'
-            : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
-        }`}
+        className={`p-2 rounded-lg transition-colors ${messageCount === 0 || isLoading
+          ? 'text-gray-300 cursor-not-allowed'
+          : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
+          }`}
         title="清空聊天历史"
       >
         <TrashIcon className="w-5 h-5" />
@@ -101,7 +100,6 @@ export function ChatContainer({
   className = '',
   maxHeight = '600px',
   enableHistory = true,
-  theme = 'light',
   useGraphQL = false,
   userId,
   sessionId
@@ -195,8 +193,7 @@ export function CompactChatContainer({
     sendMessage,
     isLoading,
     inputValue,
-    setInputValue,
-    error
+    setInputValue
   } = useChat({
     initialMessages,
     onSendMessage,

@@ -71,7 +71,7 @@ export function useChat(options: {
     enableHistory,
     sessionId: providedSessionId,
     userId,
-    useGraphQL: true
+    useGraphQL: useGraphQL
   });
 
   // 本地存储管理

@@ -1,17 +1,17 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useApolloClient } from '@apollo/client';
 import { useLocalStorage } from './useLocalStorage';
 import {
   SEND_MESSAGE,
   CREATE_CHAT_SESSION,
-  GET_CHAT_SESSION,
-  HELLO_QUERY
+  GET_CHAT_SESSION
 } from '../lib/graphql-queries';
-import { useGraphQLErrorHandler } from '../lib/graphql-error-handler';
+
 import type {
   Message,
   UseChatReturn,
-  MessageSender,
   StoredChatData,
   ChatSession
 } from '../lib/types';
@@ -33,38 +33,40 @@ function generateSessionId(): string {
 
 /**
  * 将 GraphQL 消息转换为本地消息格式
- * Worker Schema: { id, content, role, timestamp }
+ * Worker Schema: { id, content, role, timestamp/createdAt }
  * Local Format: { id, content, sender, timestamp }
  */
-function convertGraphQLMessage(gqlMessage: any): Message {
+function convertGraphQLMessage(gqlMessage: {
+  id: string;
+  content: string;
+  role: 'USER' | 'AI';
+  timestamp?: string;
+  createdAt?: string;
+}): Message {
+  const timeField = gqlMessage.timestamp || gqlMessage.createdAt || new Date().toISOString();
   return {
     id: gqlMessage.id,
     content: gqlMessage.content,
     sender: gqlMessage.role === 'USER' ? 'user' : 'ai',
-    timestamp: new Date(gqlMessage.timestamp).getTime(),
+    timestamp: new Date(timeField).getTime(),
     isLoading: false
   };
 }
 
-/**
- * 将本地消息格式转换为 GraphQL 格式
- */
-function convertToGraphQLRole(sender: string): 'USER' | 'ASSISTANT' {
-  return sender === 'user' ? 'USER' : 'ASSISTANT';
-}
+
 
 /**
  * 模拟 AI 回复函数（作为备选方案）
  */
-const fallbackAIResponse: MessageSender = async (message: string): Promise<string> => {
+const fallbackAIResponse = async (message: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-  
+
   const responses = [
     `我理解你说的是：**"${message}"**。这是一个很有趣的话题！\n\n让我为你提供一些相关信息：\n- 这个话题很值得深入探讨\n- 我们可以从多个角度来分析\n- 你的观点很有见地`,
     `关于 **${message}**，我觉得这需要更深入的思考。\n\n## 我的分析\n\n1. 首先，这是一个复杂的问题\n2. 其次，需要考虑多个因素\n3. 最后，我们应该保持开放的心态\n\n> 思考是人类最宝贵的能力之一。`,
     `谢谢你分享 \`${message}\`。我很乐意继续这个对话。\n\n### 相关建议\n\n- **保持好奇心**：继续探索这个话题\n- **多角度思考**：从不同的视角来看待问题\n- **实践应用**：将理论与实践相结合`
-  ];
-  
+  ] as const;
+
   return responses[Math.floor(Math.random() * responses.length)];
 };
 
@@ -84,12 +86,10 @@ export function useChatGraphQL(options: {
     initialMessages = [],
     enableHistory = true,
     sessionId: providedSessionId,
-    userId,
     useGraphQL = false
   } = options;
 
   const apolloClient = useApolloClient();
-  const { handleError } = useGraphQLErrorHandler();
 
   // 本地存储管理
   const [storedData, setStoredData] = useLocalStorage<StoredChatData>(
@@ -98,7 +98,7 @@ export function useChatGraphQL(options: {
   );
 
   // 当前会话 ID
-  const [currentSessionId, setCurrentSessionId] = useState(() => {
+  const [currentSessionId] = useState(() => {
     if (providedSessionId) return providedSessionId;
     if (storedData.currentSessionId) return storedData.currentSessionId;
     return generateSessionId();
@@ -128,30 +128,22 @@ export function useChatGraphQL(options: {
   // 获取当前会话的消息
   const currentSession = storedData.sessions[currentSessionId];
   const localStoredMessages = currentSession?.messages || initialMessages;
-  const graphqlMessages = chatSessionData?.getChatSession?.messages?.map(convertGraphQLMessage) || [];
-  
+
   // 合并消息：优先使用 GraphQL 数据，本地消息作为临时显示
   const messages = useMemo(() => {
     if (useGraphQL) {
-      // GraphQL 模式下，优先使用 GraphQL 数据源的消息
+      const graphqlMessages = chatSessionData?.getChatSession?.messages?.map(convertGraphQLMessage) || [];
+
+      // 如果有 GraphQL 数据，优先使用 GraphQL 数据
       if (graphqlMessages.length > 0) {
-        // 如果有本地临时消息（正在发送中的消息），合并显示
-        if (localMessages.length > 0) {
-          // 找出本地消息中不在 GraphQL 数据中的消息（通常是正在发送的消息）
-          const graphqlMessageIds = new Set(graphqlMessages.map(msg => msg.id));
-          const pendingLocalMessages = localMessages.filter(msg => !graphqlMessageIds.has(msg.id));
-          
-          return [...graphqlMessages, ...pendingLocalMessages];
-        }
-        
         return graphqlMessages;
       }
-      
-      // 如果 GraphQL 数据还没有加载，使用本地临时消息
+
+      // 如果没有 GraphQL 数据，使用本地临时消息
       return localMessages;
     }
     return localStoredMessages;
-  }, [useGraphQL, localMessages, graphqlMessages, localStoredMessages]);
+  }, [useGraphQL, localMessages, chatSessionData?.getChatSession?.messages, localStoredMessages]);
 
   // 初始化 GraphQL 会话
   const initializeGraphQLSession = useCallback(async () => {
@@ -160,12 +152,12 @@ export function useChatGraphQL(options: {
     try {
       const result = await createChatSessionMutation();
       const newSessionId = result.data?.createChatSession?.id;
-      
+
       if (newSessionId) {
         setGraphqlSessionId(newSessionId);
         // 移除 console.log 调试语句
       }
-    } catch (error) {
+    } catch {
       // 移除 console.error 调试语句
       setError('无法创建聊天会话');
     }
@@ -217,12 +209,24 @@ export function useChatGraphQL(options: {
 
   // GraphQL 发送消息
   const sendMessageGraphQL = useCallback(async (content: string) => {
-    if (!graphqlSessionId) {
-      throw new Error('GraphQL 会话未初始化');
+    // 如果会话未初始化，先初始化会话
+    let sessionId = graphqlSessionId;
+    if (!sessionId) {
+      try {
+        const result = await createChatSessionMutation();
+        sessionId = result.data?.createChatSession?.id;
+        if (sessionId) {
+          setGraphqlSessionId(sessionId);
+        } else {
+          throw new Error('无法创建聊天会话');
+        }
+      } catch (_error) {
+        throw new Error('GraphQL 会话初始化失败');
+      }
     }
 
     const input = {
-      sessionId: graphqlSessionId,
+      sessionId: sessionId,
       content: content.trim(),
       role: 'USER' as const
     };
@@ -233,6 +237,7 @@ export function useChatGraphQL(options: {
       variables: { input }
     });
 
+    console.log('GraphQL 发送消息结果:', result);
     // 移除 console.log 调试语句
 
     if (result.errors && result.errors.length > 0) {
@@ -246,7 +251,7 @@ export function useChatGraphQL(options: {
     }
 
     const aiResponse = result.data.sendMessage.message.content;
-    // 移除 console.log 调试语句
+    console.log('GraphQL 收到回复:', aiResponse);
 
     // 检查是否是错误消息
     if (aiResponse === '抱歉，我现在无法回复。请稍后再试。') {
@@ -258,7 +263,7 @@ export function useChatGraphQL(options: {
     await refetchSession();
 
     return aiResponse;
-  }, [graphqlSessionId, sendMessageMutation, refetchSession]);
+  }, [graphqlSessionId, sendMessageMutation, refetchSession, createChatSessionMutation, setGraphqlSessionId]);
 
   // 发送消息
   const sendMessage = useCallback(async (content: string) => {
@@ -277,12 +282,11 @@ export function useChatGraphQL(options: {
     try {
       if (useGraphQL) {
         // 使用 GraphQL - 简化状态管理
-        // 移除 console.log 调试语句
-        
-        // 添加用户消息
+
+        // 添加用户消息到本地状态
         const messagesWithUser = [...messages, userMessage];
         setLocalMessages(messagesWithUser);
-        
+
         // 创建加载中的 AI 消息
         const loadingAIMessage: Message = {
           id: generateId(),
@@ -291,28 +295,23 @@ export function useChatGraphQL(options: {
           timestamp: Date.now(),
           isLoading: true
         };
-        
+
         const messagesWithLoading = [...messagesWithUser, loadingAIMessage];
         setLocalMessages(messagesWithLoading);
-        
-        // 移除 console.log 调试语句
+
         // 发送 GraphQL 请求
         const aiResponse = await sendMessageGraphQL(content);
-        // 移除 console.log 调试语句
-        
-        // 创建最终的 AI 消息
+        console.log('GraphQL 收到回复:', aiResponse);
+
+        // GraphQL 请求成功后，更新本地消息状态
         const finalAIMessage: Message = {
-          id: generateId(),
+          ...loadingAIMessage,
           content: aiResponse,
-          sender: 'ai',
-          timestamp: Date.now()
+          isLoading: false
         };
-        
-        // 更新最终消息状态
+
         const finalMessages = [...messagesWithUser, finalAIMessage];
         setLocalMessages(finalMessages);
-        
-        // 更新会话存储
         updateSessionMessages(finalMessages);
       } else {
         // 使用本地模拟
@@ -351,21 +350,20 @@ export function useChatGraphQL(options: {
       // 移除 console.error 调试语句
       const errorMessage = error instanceof Error ? error.message : '发送消息时出现错误';
       setError(errorMessage);
-      
+
       if (useGraphQL) {
-        // GraphQL 错误处理 - 简化错误显示
+        // GraphQL 错误处理
         const aiErrorMessage: Message = {
           id: generateId(),
           content: `抱歉，发送消息时出现错误：${errorMessage}`,
           sender: 'ai',
           timestamp: Date.now()
         };
-        
-        // 简化错误状态更新
-        const messagesWithUser = [...messages, userMessage];
-        const messagesWithError = [...messagesWithUser, aiErrorMessage];
+
+        // 错误时显示用户消息和错误消息，移除加载中的消息
+        const currentMessages = localMessages.filter(msg => !msg.isLoading);
+        const messagesWithError = [...currentMessages, aiErrorMessage];
         setLocalMessages(messagesWithError);
-        updateSessionMessages(messagesWithError);
       } else {
         // 本地错误处理
         const aiErrorMessage: Message = {
@@ -381,7 +379,7 @@ export function useChatGraphQL(options: {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, useGraphQL, sendMessageGraphQL, updateSessionMessages, handleError]);
+  }, [messages, isLoading, useGraphQL, sendMessageGraphQL, updateSessionMessages]);
 
   // 清空历史记录
   const clearHistory = useCallback(() => {

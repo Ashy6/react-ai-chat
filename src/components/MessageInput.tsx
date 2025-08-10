@@ -37,7 +37,7 @@ function useAutoResize(
     // 设置新高度
     const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${newHeight}px`;
-  }, [value, minRows, maxRows]);
+  }, [value, minRows, maxRows, textareaRef]);
 }
 
 /**
@@ -77,14 +77,16 @@ export function MessageInput({
   const handleSend = () => {
     const trimmedValue = value.trim();
     if (trimmedValue && !disabled && !isLoading) {
+      console.log('发送消息:', trimmedValue);
+      
       onSend(trimmedValue);
     }
   };
 
-  // 聚焦到输入框
-  const focusInput = () => {
-    textareaRef.current?.focus();
-  };
+  // 聚焦到输入框（暂时未使用）
+  // const focusInput = () => {
+  //   textareaRef.current?.focus();
+  // };
 
   // 判断是否可以发送
   const canSend = value.trim().length > 0 && !disabled && !isLoading;

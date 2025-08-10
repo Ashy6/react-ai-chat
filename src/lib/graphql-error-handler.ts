@@ -1,5 +1,4 @@
 import { ApolloError } from '@apollo/client';
-import type { GraphQLError } from './graphql-types';
 
 /**
  * GraphQL 错误类型
