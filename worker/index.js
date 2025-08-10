@@ -106,6 +106,16 @@ function generateId() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
+// 生成会话 ID
+function generateSessionId() {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2)}`;
+}
+
+// 生成消息 ID
+function generateMessageId() {
+  return `msg_${Date.now()}_${Math.random().toString(36).substr(2)}`;
+}
+
 // GraphQL 解析器
 const resolvers = {
   Query: {
@@ -238,6 +248,20 @@ export default {
 
         const { query, variables } = body;
 
+        // 处理 hello 查询
+        if (query.includes('hello')) {
+          return new Response(JSON.stringify({
+            data: {
+              hello: resolvers.Query.hello()
+            }
+          }), {
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          });
+        }
+
         // 处理创建会话
         if (query.includes('createChatSession')) {
           const sessionId = generateSessionId();
@@ -260,7 +284,8 @@ export default {
 
         // 处理发送消息
         if (query.includes('sendMessage')) {
-          const { sessionId, content } = variables;
+          const { input } = variables;
+          const { sessionId, content } = input;
           // 移除 console.log 调试语句
 
           try {
@@ -279,13 +304,23 @@ export default {
             const aiResponse = await callDeepSeekAPI(messages, apiKey);
             // 移除 console.log 调试语句
 
+            const aiMessage = {
+              id: generateMessageId(),
+              content: aiResponse,
+              role: 'ASSISTANT',
+              timestamp: new Date().toISOString()
+            };
+
             return new Response(JSON.stringify({
               data: {
                 sendMessage: {
-                  id: generateMessageId(),
-                  content: aiResponse,
-                  role: 'ASSISTANT',
-                  createdAt: new Date().toISOString()
+                  message: aiMessage,
+                  session: {
+                    id: sessionId,
+                    messages: [aiMessage],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  }
                 }
               }
             }), {
